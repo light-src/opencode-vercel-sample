@@ -18,6 +18,22 @@
       header {
         padding: 28px 40px 0;
       }
+      .controls {
+        margin-top: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        color: #b9c4ff;
+        font-size: 14px;
+      }
+      select {
+        background: #111831;
+        color: #f5f7ff;
+        border: 1px solid #2d3770;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 14px;
+      }
       h1 {
         margin: 0 0 8px;
         font-size: 28px;
@@ -69,22 +85,49 @@
     <header>
       <h1>Notion Live Dashboard</h1>
       <p>Notion DB에서 최신 항목을 실시간으로 불러옵니다.</p>
+      <div class="controls">
+        <label for="sortSelect">정렬</label>
+        <select id="sortSelect">
+          <option value="latest" selected>Latest</option>
+          <option value="oldest">Oldest</option>
+          <option value="title">Title A-Z</option>
+          <option value="priority">Priority</option>
+        </select>
+      </div>
     </header>
     <main>
       <div id="status" class="empty">불러오는 중…</div>
       <div id="grid" class="grid" style="display:none;"></div>
     </main>
     <script>
-      async function loadItems() {
+      const priorityRank = (value = "") => {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === "p1") return 0;
+        if (normalized === "high") return 1;
+        if (normalized === "medium") return 2;
+        return 3;
+      };
+
+      async function loadItems(sortKey) {
         const status = document.getElementById("status");
         const grid = document.getElementById("grid");
+        status.textContent = "불러오는 중…";
+        status.style.display = "block";
+        grid.style.display = "none";
         try {
-          const res = await fetch("/api/notion");
+          const res = await fetch(`/api/notion?sort=${encodeURIComponent(sortKey)}`);
           if (!res.ok) throw new Error(await res.text());
           const { items } = await res.json();
           if (!items || items.length === 0) {
             status.textContent = "데이터가 없습니다.";
             return;
+          }
+          if (sortKey === "priority") {
+            items.sort((a, b) => {
+              const rankDiff = priorityRank(a.priority) - priorityRank(b.priority);
+              if (rankDiff !== 0) return rankDiff;
+              return (a.title || "").localeCompare(b.title || "", "en", { sensitivity: "base" });
+            });
           }
           status.style.display = "none";
           grid.style.display = "grid";
@@ -109,7 +152,10 @@
         }
       }
 
-      loadItems();
+      const sortSelect = document.getElementById("sortSelect");
+      const refresh = () => loadItems(sortSelect.value);
+      sortSelect.addEventListener("change", refresh);
+      refresh();
     </script>
   </body>
 </html>

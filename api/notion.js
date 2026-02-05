@@ -2,8 +2,26 @@ export default async function handler(req, res) {
   try {
     const token = process.env.NOTION_TOKEN;
     const dbId = process.env.NOTION_DB_ID;
+    const sort = Array.isArray(req.query.sort) ? req.query.sort[0] : req.query.sort;
     if (!token || !dbId) {
       return res.status(500).json({ error: "Missing NOTION_TOKEN or NOTION_DB_ID" });
+    }
+
+    let sorts;
+    switch (sort) {
+      case "oldest":
+        sorts = [{ timestamp: "created_time", direction: "ascending" }];
+        break;
+      case "title":
+        sorts = [{ property: "Title", direction: "ascending" }];
+        break;
+      case "priority":
+        sorts = undefined;
+        break;
+      case "latest":
+      default:
+        sorts = [{ timestamp: "created_time", direction: "descending" }];
+        break;
     }
 
     const response = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
@@ -15,7 +33,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         page_size: 20,
-        sorts: [{ timestamp: "created_time", direction: "descending" }],
+        ...(sorts ? { sorts } : {}),
       }),
     });
 
