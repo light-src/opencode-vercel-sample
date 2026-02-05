@@ -3,23 +3,113 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vercel Sample</title>
+    <title>Notion Live Dashboard</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #0b1021; color: #f5f7ff; }
-      main { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 40px; }
-      .card { background: #141b36; border: 1px solid #26305a; padding: 32px 36px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-      h1 { margin: 0 0 12px; font-size: 28px; }
-      p { margin: 0; opacity: 0.8; }
-      small { display: block; margin-top: 16px; opacity: 0.6; }
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #0b1021;
+        color: #f5f7ff;
+      }
+      header {
+        padding: 28px 40px 0;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+      p {
+        margin: 0;
+        opacity: 0.8;
+      }
+      main {
+        padding: 24px 40px 60px;
+      }
+      .grid {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+      .card {
+        background: #141b36;
+        border: 1px solid #26305a;
+        padding: 18px 20px;
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(94, 201, 255, 0.18);
+        color: #5ec9ff;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      .meta {
+        margin-top: 10px;
+        font-size: 13px;
+        opacity: 0.75;
+      }
+      a {
+        color: #8ab4ff;
+      }
+      .empty {
+        opacity: 0.6;
+        padding: 40px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <header>
+      <h1>Notion Live Dashboard</h1>
+      <p>Notion DB에서 최신 항목을 실시간으로 불러옵니다.</p>
+    </header>
     <main>
-      <div class="card">
-        <h1>Vercel 배포 샘플</h1>
-        <p>OpenClaw가 만든 정적 페이지입니다.</p>
-        <small>배포 시간이 업데이트됩니다.</small>
-      </div>
+      <div id="status" class="empty">불러오는 중…</div>
+      <div id="grid" class="grid" style="display:none;"></div>
     </main>
+    <script>
+      async function loadItems() {
+        const status = document.getElementById("status");
+        const grid = document.getElementById("grid");
+        try {
+          const res = await fetch("/api/notion");
+          if (!res.ok) throw new Error(await res.text());
+          const { items } = await res.json();
+          if (!items || items.length === 0) {
+            status.textContent = "데이터가 없습니다.";
+            return;
+          }
+          status.style.display = "none";
+          grid.style.display = "grid";
+          grid.innerHTML = items
+            .map((item) => {
+              return `
+                <div class="card">
+                  <div class="badge">${item.priority || "Priority"}</div>
+                  <h3>${item.title}</h3>
+                  <p>${item.summary || ""}</p>
+                  <div class="meta">
+                    <div><strong>MVP:</strong> ${item.scope || "-"}</div>
+                    <div><strong>Revenue:</strong> ${item.revenue || "-"}</div>
+                    ${item.link ? `<div><a href="${item.link}" target="_blank">Evidence Link</a></div>` : ""}
+                  </div>
+                </div>
+              `;
+            })
+            .join("");
+        } catch (err) {
+          status.textContent = "불러오기 실패: " + (err?.message || err);
+        }
+      }
+
+      loadItems();
+    </script>
   </body>
 </html>
